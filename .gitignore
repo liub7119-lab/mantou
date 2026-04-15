@@ -1,0 +1,40 @@
+# ======================================
+# 辅导员工作辅助平台
+# ======================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 环境
+.env
+.venv/
+venv/
+env/
+
+# 数据库
+backend/data/
+
+# 上传文件
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Node
+node_modules/
+frontend/dist/
+
+# 临时文件
+*.tmp
+*.xlsx

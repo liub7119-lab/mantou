@@ -1,0 +1,23 @@
+# ======================================
+# 辅导员工作辅助平台 - Python 依赖
+# ======================================
+
+# ---- Web 框架 ----
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20     # 文件上传支持
+
+# ---- 数据库 ----
+sqlalchemy==2.0.36
+pydantic-settings==2.7.0     # 配置管理（.env 加载）
+
+# ---- LLM 客户端（二选一或都装） ----
+openai==1.58.1               # OpenAI / GPT-4o
+google-generativeai==0.8.4   # Google Gemini
+
+# ---- Excel 导出 ----
+openpyxl==3.1.5
+Pillow==11.3.0               # openpyxl 嵌入图片依赖
+
+# ---- 工具 ----
+python-dotenv==1.0.1
