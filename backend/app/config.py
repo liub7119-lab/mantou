@@ -38,8 +38,17 @@ class Settings(BaseSettings):
 
     # ---- CORS ----
     CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:5175", "http://127.0.0.1:5173"]
-    # 生产环境通过环境变量追加，如: CORS_EXTRA_ORIGINS=https://yourdomain.com
     CORS_EXTRA_ORIGINS: str = ""
+
+    # ---- JWT 认证 ----
+    JWT_SECRET: str = "counselor-platform-secret-key-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_HOURS: int = 24
+
+    # ---- 预设辅导员账号 ----
+    COUNSELOR_USERNAME: str = "counselor"
+    COUNSELOR_PASSWORD: str = "daoyuan2025"
+    COUNSELOR_NAME: str = "辅导员"
 
     model_config = {
         "env_file": str(BASE_DIR / ".env"),

@@ -5,6 +5,8 @@
 
 import secrets
 import string
+import hashlib
+from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -27,10 +29,27 @@ router = APIRouter()
 
 
 def _generate_anonymous_id() -> str:
-    """生成 6 位随机匿名 ID，如 树洞#A3F8K2"""
-    chars = string.ascii_uppercase + string.digits
-    code = "".join(secrets.choice(chars) for _ in range(6))
-    return f"树洞#{code}"
+    """生成可爱的随机昵称，如 树洞·冒泡的小水獭"""
+    adjectives = [
+        "冒泡的", "迷路的", "打盹的", "偷吃的", "蹦跶的",
+        "发呆的", "害羞的", "圆滚滚的", "毛茸茸的", "软乎乎的",
+        "眯眼的", "翻肚皮的", "踮脚的", "哼歌的", "吹泡泡的",
+        "晒太阳的", "追蝴蝶的", "啃竹子的", "揉眼睛的", "打哈欠的",
+        "藏尾巴的", "摇耳朵的", "舔爪子的", "转圈圈的", "挠下巴的",
+        "叠罗汉的", "蹭树皮的", "滚草地的", "捂耳朵的", "歪头的",
+    ]
+    animals = [
+        "小水獭", "小熊猫", "小刺猬", "小企鹅", "小海豹",
+        "小柴犬", "小仓鼠", "小树懒", "小浣熊", "小兔叽",
+        "小鹦鹉", "小猫咪", "小鸭鸭", "小松鼠", "小狐狸",
+        "小河马", "小考拉", "小龙猫", "小海马", "小麋鹿",
+        "小章鱼", "小水母", "小土拨鼠", "小羊驼", "小北极熊",
+        "小海獭", "小花鹿", "小白鲸", "小熊蜂", "小胖达",
+    ]
+    adj = secrets.choice(adjectives)
+    animal = secrets.choice(animals)
+    suffix = secrets.choice(string.digits) + secrets.choice(string.digits)
+    return f"树洞·{adj}{animal}{suffix}"
 
 
 # ──────────────────────────────────────────────

@@ -17,7 +17,30 @@
       "Bash(python3 -m json.tool)",
       "Bash(curl -s http://localhost:8000/health)",
       "Bash(curl -s http://localhost:8000/api/v1/feedback/admin/list)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@134.175.189.40 \"uname -a && cat /etc/os-release | head -5\")",
+      "Bash(sshpass -p 'xiaobo2005!' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@134.175.189.40 \"uname -a\")",
+      "Bash(brew install:*)",
+      "Bash(sshpass -p 'xiaobo2005!' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@134.175.189.40 \"uname -a && echo '---' && cat /etc/os-release | head -5\")",
+      "Bash(sshpass -p 'Xiaobo2005' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@134.175.189.40 \"uname -a && echo '---' && cat /etc/os-release | head -5\")",
+      "Bash(sshpass -p 'Xiaobo2005' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@134.175.189.40 \"echo 'connected'\")",
+      "Bash(sshpass -p 'Xiaobo2005' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@134.175.189.40 \"echo 'connected'\")",
+      "Bash(sshpass -p 'Xiaobo2005' ssh -o StrictHostKeyChecking=no ubuntu@134.175.189.40 \"sudo apt update -y && sudo apt install -y python3 python3-pip python3-venv nginx\")",
+      "Bash(sshpass -p 'Xiaobo2005' ssh ubuntu@134.175.189.40 \"sudo mkdir -p /var/www/counselor-platform && sudo chown ubuntu:ubuntu /var/www/counselor-platform\")",
+      "Bash(sshpass -p 'Xiaobo2005' scp -r /Users/mantou/Desktop/学生工作一站式平台/backend ubuntu@134.175.189.40:/var/www/counselor-platform/)",
+      "Bash(sshpass -p 'Xiaobo2005' scp -r /Users/mantou/Desktop/学生工作一站式平台/frontend/dist ubuntu@134.175.189.40:/var/www/counselor-platform/frontend)",
+      "Bash(sshpass -p 'Xiaobo2005' rsync -avz --exclude='__pycache__' --exclude='*.pyc' --exclude='data/' --exclude='uploads/*' -e 'ssh -o StrictHostKeyChecking=no' /Users/mantou/Desktop/学生工作一站式平台/backend/ ubuntu@134.175.189.40:/var/www/counselor-platform/backend/)",
+      "Bash(sshpass -p 'Xiaobo2005' rsync -avz -e 'ssh -o StrictHostKeyChecking=no' /Users/mantou/Desktop/学生工作一站式平台/frontend/dist/ ubuntu@134.175.189.40:/var/www/counselor-platform/frontend/)",
+      "Bash(sshpass -p 'Xiaobo2005' ssh ubuntu@134.175.189.40 \"cd /var/www/counselor-platform/backend && rm -rf venv && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt\")",
+      "Bash(sshpass -p 'Xiaobo2005' ssh ubuntu@134.175.189.40 \"sudo mkdir -p /var/www/counselor-platform/backend/data /var/www/counselor-platform/backend/uploads && ls /var/www/counselor-platform/backend/app/\")",
+      "Bash(sshpass -p:*)",
+      "Bash(curl -s http://134.175.189.40/api/v1/achievements/list)",
+      "Bash(curl -s http://134.175.189.40/health)",
+      "Bash(curl -s http://daoyuan.site/)",
+      "Bash(curl -s http://daoyuan.site/api/v1/achievements/list)",
+      "Bash(curl -s http://daoyuan.site/health)"
     ]
   }
 }

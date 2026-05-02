@@ -19,5 +19,9 @@ google-generativeai==0.8.4   # Google Gemini
 openpyxl==3.1.5
 Pillow==11.3.0               # openpyxl 嵌入图片依赖
 
+# ---- 认证 ----
+pyjwt==2.9.0                 # JWT token
+passlib[bcrypt]==1.7.4       # 密码加密
+
 # ---- 工具 ----
 python-dotenv==1.0.1

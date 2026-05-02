@@ -9,14 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
-from .database import init_db
-from .routers import achievements, export, feedback
+from .database import SessionLocal, init_db
+from .routers import achievements, attendance, auth, export, feedback
+from .services.auth_service import init_counselor_account
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动时初始化数据库"""
+    """应用生命周期：启动时初始化数据库 + 预设账号"""
     init_db()
+    # 初始化辅导员账号
+    db = SessionLocal()
+    try:
+        init_counselor_account(db)
+    finally:
+        db.close()
     print(f"✅ {settings.APP_NAME} 启动成功")
     yield
     print("👋 应用关闭")
@@ -25,7 +32,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     description="解决辅导员录入数据累、学生填表烦的智能工具",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -47,6 +54,11 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 
 # ---- 注册路由 ----
 app.include_router(
+    auth.router,
+    prefix=f"{settings.API_PREFIX}/auth",
+    tags=["认证"],
+)
+app.include_router(
     achievements.router,
     prefix=f"{settings.API_PREFIX}/achievements",
     tags=["科研与比赛成果"],
@@ -61,11 +73,16 @@ app.include_router(
     prefix=f"{settings.API_PREFIX}/feedback",
     tags=["树洞（匿名反馈）"],
 )
+app.include_router(
+    attendance.router,
+    prefix=f"{settings.API_PREFIX}/attendance",
+    tags=["签到考勤"],
+)
 
 
 @app.get("/", tags=["健康检查"])
 async def root():
-    return {"message": f"{settings.APP_NAME} 运行中", "version": "0.1.0"}
+    return {"message": f"{settings.APP_NAME} 运行中", "version": "0.2.0"}
 
 
 @app.get("/health", tags=["健康检查"])

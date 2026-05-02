@@ -1,6 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-/* 全局基础样式 */
+@theme inline {
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --radius-lg: 1.25rem;
+  --radius-md: 0.75rem;
+  --radius-sm: 0.5rem;
+}
+
+:root {
+  --background: #F2F4F7;
+  --foreground: #333333;
+  --card: #ffffff;
+  --card-foreground: #555555;
+  --primary: #6ECAFF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #8FD6B0;
+  --secondary-foreground: #2D7A50;
+  --muted: #F2F4F7;
+  --muted-foreground: #999999;
+  --accent: #FFD60E;
+  --accent-foreground: #8B6914;
+  --destructive: #EF4444;
+  --border: #E8ECF0;
+  --input: #E8ECF0;
+  --ring: #6ECAFF;
+  --success: #8FD6B0;
+  --warning: #FFD60E;
+
+  --blue-soft: #6ECAFF;
+  --blue-hover: #4DB8F0;
+  --blue-light: #E8F4FD;
+  --blue-muted: #A8DDFF;
+  --warm-gray: #F2F4F7;
+  --text-primary: #333333;
+  --text-secondary: #555555;
+  --text-muted: #999999;
+  --green-soft: #8FD6B0;
+  --yellow-soft: #FFD60E;
+  --red-soft: #EF4444;
+  --purple-soft: #B4A0E5;
+
+  --surface-0: #ffffff;
+  --surface-1: #F7F8FA;
+  --surface-2: #F2F4F7;
+  --line-soft: #E8ECF0;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
 body {
-  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.app-shell {
+  background: var(--background);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.soft-panel {
+  border: 1px solid var(--line-soft);
+  background: var(--surface-0);
+  box-shadow: var(--shadow-sm);
+}
+
+.hover-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
