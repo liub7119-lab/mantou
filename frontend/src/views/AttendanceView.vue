@@ -104,6 +104,17 @@
             <span class="text-[10px] font-normal px-2 py-0.5 rounded-lg" style="background: #EFF6FF; color: #3B82F6;">{{ selectedCourse.day_of_week }} {{ selectedCourse.period }}节</span>
           </h3>
 
+          <!-- 上课日期（必填，由纪律委员填写真实上课日期，而非默认当天） -->
+          <div class="mb-5">
+            <label class="block text-xs mb-1.5 font-semibold flex items-center gap-1.5" style="color: #1E293B;">
+              <CalendarDays class="w-3.5 h-3.5" style="color: #3B82F6;" />
+              上课日期
+              <span class="text-[10px] font-normal px-2 py-0.5 rounded-lg" style="background: #FEF2F2; color: #EF4444;">必填，请选择实际上课日期</span>
+            </label>
+            <input v-model="attDate" type="date" class="att-input md:w-60" />
+            <p v-if="!attDate" class="text-[11px] mt-1.5" style="color: #F59E0B;">请选择本次课程的真实上课日期（不要使用默认当天日期）</p>
+          </div>
+
           <!-- 六项考勤计数 -->
           <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
             <div>
@@ -176,6 +187,14 @@
                     <option value="早退">早退</option>
                     <option value="旷课">旷课</option>
                   </select>
+                  <label class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all"
+                    :style="leaveImages[sid] ? 'background: #ECFDF5;' : 'background: #FEF2F2;'"
+                  >
+                    <Loader2 v-if="uploadingImage[sid]" class="w-3.5 h-3.5 animate-spin" style="color: #3B82F6;" />
+                    <ImageIcon v-else-if="leaveImages[sid]" class="w-3.5 h-3.5" style="color: #10B981;" />
+                    <Camera v-else class="w-3.5 h-3.5" style="color: #EF4444;" />
+                    <input type="file" accept="image/*" class="hidden" @change="handleLeaveImageUpload(sid, $event)" />
+                  </label>
                   <button @click="removeLeaveStudent(sid)" class="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer" style="background: #FEF2F2;">
                     <X class="w-3 h-3" style="color: #EF4444;" />
                   </button>
@@ -185,24 +204,63 @@
             <textarea v-model="attForm.leave_details" rows="2" class="att-textarea" placeholder="补充说明（可选）"></textarea>
           </div>
 
+          <!-- 教室照片上传（必须2张） -->
+          <div class="mb-5">
+            <label class="block text-xs mb-2 font-semibold flex items-center gap-1.5" style="color: #1E293B;">
+              <Camera class="w-3.5 h-3.5" style="color: #3B82F6;" />
+              教室照片
+              <span class="text-[10px] font-normal px-2 py-0.5 rounded-lg" style="background: #FEF2F2; color: #EF4444;">必须上传2张</span>
+            </label>
+            <p class="text-[11px] mb-3" style="color: #94A3B8;">请拍摄教室全景照片，用于考勤核实</p>
+            <div class="flex gap-3">
+              <div v-for="(photo, idx) in classroomPhotos" :key="idx" class="relative w-28 h-28 rounded-2xl overflow-hidden group" style="background: #F8FAFC;">
+                <img :src="getAssetUrl(photo)" class="w-full h-full object-cover" />
+                <button @click="removeClassroomPhoto(idx)" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" style="background: rgba(239,68,68,0.9);">
+                  <X class="w-3 h-3 text-white" />
+                </button>
+                <div class="absolute bottom-0 left-0 right-0 px-2 py-1 text-[9px] text-white text-center" style="background: rgba(0,0,0,0.4);">
+                  照片{{ idx + 1 }}
+                </div>
+              </div>
+              <label v-if="classroomPhotos.length < 2" class="w-28 h-28 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:shadow-md" :style="uploadingClassroomPhoto ? 'background: #EFF6FF; border: 2px dashed #93C5FD;' : 'background: #F8FAFC; border: 2px dashed #CBD5E1;'">
+                <Loader2 v-if="uploadingClassroomPhoto" class="w-6 h-6 animate-spin mb-1" style="color: #3B82F6;" />
+                <template v-else>
+                  <ImagePlus class="w-6 h-6 mb-1" style="color: #94A3B8;" />
+                  <span class="text-[10px]" style="color: #94A3B8;">点击上传</span>
+                </template>
+                <input type="file" accept="image/*" class="hidden" @change="handleClassroomPhotoUpload" :disabled="uploadingClassroomPhoto" />
+              </label>
+            </div>
+            <div v-if="classroomPhotos.length < 2" class="flex items-center gap-1.5 mt-2 px-3 py-2 rounded-xl" style="background: #FFFBEB;">
+              <TriangleAlert class="w-3.5 h-3.5 shrink-0" style="color: #F59E0B;" />
+              <span class="text-[11px]" style="color: #B45309;">还需上传 {{ 2 - classroomPhotos.length }} 张教室照片才能提交考勤</span>
+            </div>
+          </div>
+
           <button
             @click="submitAttendance"
-            :disabled="submitting"
+            :disabled="submitting || !canSubmitAttendance"
             class="w-full py-3 rounded-full text-sm font-medium text-white cursor-pointer flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             style="background: linear-gradient(135deg, #3B82F6, #10B981);"
           >
             <Loader2 v-if="submitting" class="w-4 h-4 animate-spin" />
             <Check v-else class="w-4 h-4" />
-            {{ submitting ? '提交中...' : '提交考勤' }}
+            {{ submitting ? '提交中...' : !attDate ? '请选择上课日期' : classroomPhotos.length < 2 ? '请上传2张教室照片' : !allLeaveImagesUploaded ? '请上传所有假条图片' : '提交考勤' }}
           </button>
         </div>
 
         <!-- 历史记录 -->
         <div v-if="records.length > 0" class="bg-white rounded-3xl p-7" style="box-shadow: 0 2px 16px rgba(125,175,206,0.06);">
-          <h3 class="text-sm font-semibold mb-4 flex items-center gap-2" style="color: #1E293B;">
-            <History class="w-4 h-4" style="color: #94A3B8;" />
-            考勤记录
-          </h3>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold flex items-center gap-2" style="color: #1E293B;">
+              <History class="w-4 h-4" style="color: #94A3B8;" />
+              考勤记录
+            </h3>
+            <button @click="exportRecords" class="px-4 py-2 rounded-full text-[11px] font-medium cursor-pointer flex items-center gap-1.5" style="background: #EFF6FF; color: #3B82F6;">
+              <Download class="w-3.5 h-3.5" />
+              导出表格
+            </button>
+          </div>
           <div class="space-y-3">
             <div v-for="r in records" :key="r.id" class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background: #F8FAFC;">
               <span class="text-xs font-medium" style="color: #1E293B;">{{ r.date_str }} {{ r.day_of_week }}</span>
@@ -220,24 +278,70 @@
 
     <!-- ========== 签到抽查 ========== -->
     <div v-if="tab === 'checkin'" class="space-y-6">
+        <!-- 移动端课程选择（桌面端使用右侧面板） -->
+        <div class="lg:hidden bg-white rounded-3xl p-7" style="box-shadow: 0 2px 16px rgba(125,175,206,0.06);">
+          <h3 class="text-sm font-semibold mb-4 flex items-center gap-2" style="color: #1E293B;">
+            <QrCode class="w-4 h-4" style="color: #8B5CF6;" />
+            选择课程
+          </h3>
+          <div class="grid grid-cols-1 gap-3 mb-4">
+            <div>
+              <label class="block text-xs mb-1.5" style="color: #94A3B8;">班级</label>
+              <select v-model="mobileCheckinClass" class="att-input cursor-pointer" @change="loadMobileCheckinCourses">
+                <option value="">请选择班级</option>
+                <option v-for="c in classes" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <div v-if="mobileCheckinCourseList.length > 0">
+              <label class="block text-xs mb-1.5" style="color: #94A3B8;">课程</label>
+              <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                <div v-for="c in mobileCheckinCourseList" :key="c.id"
+                  class="px-3 py-2 rounded-xl text-[11px] cursor-pointer transition-all"
+                  :style="mobileSelectedCheckinCourse?.id === c.id
+                    ? 'background: #F5F3FF; box-shadow: 0 0 0 1.5px #8B5CF6;'
+                    : 'background: #F8FAFC;'"
+                  @click="selectMobileCheckinCourse(c)"
+                >
+                  <span class="font-medium" style="color: #1E293B;">{{ c.course_name }}</span>
+                  <span class="text-[9px] ml-1" style="color: #94A3B8;">{{ c.day_of_week }} {{ c.period }}节</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="mobileSelectedCheckinCourse" class="px-4 py-3 rounded-2xl" style="background: #ECFDF5;">
+            <p class="text-xs font-medium" style="color: #10B981;">已选择：{{ mobileCheckinClass }} · {{ mobileSelectedCheckinCourse.course_name }}</p>
+          </div>
+        </div>
+
         <!-- 创建签到 -->
         <div v-if="!activeSession" class="bg-white rounded-3xl p-7" style="box-shadow: 0 2px 16px rgba(125,175,206,0.06);">
           <h3 class="text-sm font-semibold mb-4 flex items-center gap-2" style="color: #1E293B;">
             <QrCode class="w-4 h-4" style="color: #8B5CF6;" />
             发起签到
           </h3>
-          <p class="text-xs mb-4" style="color: #94A3B8;">从右侧课程日历选择课程</p>
-          <div v-if="!checkinClass || !checkinCourse" class="mb-5 px-4 py-3 rounded-2xl flex items-center gap-2" style="background: #FFFBEB;">
+          <p class="text-xs mb-4 hidden lg:block" style="color: #94A3B8;">从右侧课程日历选择课程</p>
+          <div v-if="!effectiveCheckinClass || !effectiveCheckinCourse" class="mb-5 px-4 py-3 rounded-2xl flex items-center gap-2" style="background: #FFFBEB;">
             <TriangleAlert class="w-4 h-4 shrink-0" style="color: #F59E0B;" />
-            <p class="text-xs" style="color: #B45309;">请从右侧课程日历选择课程后发起签到</p>
+            <p class="text-xs" style="color: #B45309;">请选择课程后发起签到</p>
           </div>
           <div v-else class="mb-5 px-4 py-3 rounded-2xl" style="background: #ECFDF5;">
             <p class="text-xs font-medium mb-1" style="color: #10B981;">已选择课程</p>
-            <p class="text-sm" style="color: #1E293B;">{{ checkinClass }} · {{ checkinCourse }}</p>
+            <p class="text-sm" style="color: #1E293B;">{{ effectiveCheckinClass }} · {{ effectiveCheckinCourse }}</p>
+          </div>
+          <div class="mb-5">
+            <label class="block text-xs mb-1.5" style="color: #94A3B8;">签到时长（分钟）</label>
+            <div class="flex items-center gap-2">
+              <input v-model.number="checkinExpire" type="range" min="1" max="30" class="flex-1 accent-purple-500" />
+              <span class="text-sm font-semibold w-10 text-center" style="color: #7C3AED;">{{ checkinExpire }}</span>
+            </div>
+            <div class="flex justify-between text-[10px] mt-1" style="color: #CBD5E1;">
+              <span>1分钟</span>
+              <span>30分钟</span>
+            </div>
           </div>
           <button
             @click="startCheckIn"
-            :disabled="!checkinClass || !checkinCourse || creatingSession"
+            :disabled="!effectiveCheckinClass || !effectiveCheckinCourse || creatingSession"
             class="px-6 py-3 rounded-full text-sm font-medium text-white cursor-pointer flex items-center gap-2 transition-all disabled:opacity-50"
             style="background: linear-gradient(135deg, #8B5CF6, #6366F1);"
           >
@@ -360,14 +464,15 @@ import { ref, computed, onMounted, reactive, watch, nextTick } from 'vue'
 import {
   ClipboardCheck, ClipboardList, Settings2, Users, X, Check,
   Loader2, History, QrCode, RefreshCw, XCircle, Upload,
-  TriangleAlert, ScanLine,
+  TriangleAlert, ScanLine, Camera, ImageIcon, ImagePlus, Download, CalendarDays,
 } from 'lucide-vue-next'
 import QRCode from 'qrcode'
 import {
   getRosterClasses, getClassSize, getRoster, importRoster,
   parseScheduleImage, batchAddSchedule, getSchedule,
-  createAttendanceRecord, listAttendanceRecords,
+  createAttendanceRecord, listAttendanceRecords, uploadLeaveSlip, uploadClassroomPhoto,
   createCheckInSession, doCheckIn as apiCheckIn, getCheckInStatus, closeCheckIn, listCheckInSessions,
+  getAssetUrl, exportAttendanceRecords,
 } from '../api'
 import { useAttendanceCalendar } from '../lib/useAttendanceCalendar'
 
@@ -423,6 +528,10 @@ watch(() => calStore._loadCheckinCoursesFlag.value, (v) => {
   if (v) loadCheckinCourses()
 })
 
+watch(() => calStore._coursesUpdatedFlag.value, (v) => {
+  if (v) loadCourses()
+})
+
 const attForm = reactive({
   sick_leave_count: 0,
   official_leave_count: 0,
@@ -434,13 +543,31 @@ const attForm = reactive({
 })
 const submitting = ref(false)
 const records = ref([])
+const attDate = ref('')
+
+// 把课表里的 date_str（如 "3.2"）转换为 date 输入框可用的 YYYY-MM-DD
+function isoFromDateStr(s) {
+  if (!s) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const m = s.match(/^(\d{1,2})\s*[.\-/]\s*(\d{1,2})$/)
+  if (m) {
+    const year = new Date().getFullYear()
+    return `${year}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`
+  }
+  return ''
+}
 
 const rosterStudents = ref([])
 const showRosterList = ref(true)
 const leaveStudents = reactive(new Set())
 const leaveReasons = reactive({})
+const leaveImages = reactive({})
+const uploadingImage = reactive({})
 const rosterMsg = ref('')
 const rosterMsgType = ref('success')
+
+const classroomPhotos = ref([])
+const uploadingClassroomPhoto = ref(false)
 
 const checkinExpire = ref(5)
 const creatingSession = ref(false)
@@ -454,6 +581,26 @@ const scanStatus = ref('正常')
 const scanning = ref(false)
 const scanMsg = ref('')
 const scanMsgType = ref('success')
+
+const mobileCheckinClass = ref('')
+const mobileCheckinCourseList = ref([])
+const mobileSelectedCheckinCourse = ref(null)
+
+const effectiveCheckinClass = computed(() => checkinClass.value || mobileCheckinClass.value)
+const effectiveCheckinCourse = computed(() => checkinCourse.value || mobileSelectedCheckinCourse.value?.course_name || '')
+
+async function loadMobileCheckinCourses() {
+  mobileSelectedCheckinCourse.value = null
+  if (!mobileCheckinClass.value) { mobileCheckinCourseList.value = []; return }
+  try {
+    const { data } = await getSchedule(mobileCheckinClass.value, 0)
+    mobileCheckinCourseList.value = data
+  } catch { mobileCheckinCourseList.value = [] }
+}
+
+function selectMobileCheckinCourse(c) {
+  mobileSelectedCheckinCourse.value = c
+}
 
 const globalMsg = ref('')
 const globalMsgType = ref('success')
@@ -506,6 +653,8 @@ async function toggleLeaveStudent(s) {
   if (leaveStudents.has(s.student_id)) {
     leaveStudents.delete(s.student_id)
     delete leaveReasons[s.student_id]
+    delete leaveImages[s.student_id]
+    delete uploadingImage[s.student_id]
   } else {
     leaveStudents.add(s.student_id)
     leaveReasons[s.student_id] = '病假'
@@ -518,12 +667,65 @@ async function toggleLeaveStudent(s) {
 async function removeLeaveStudent(sid) {
   leaveStudents.delete(sid)
   delete leaveReasons[sid]
+  delete leaveImages[sid]
+  delete uploadingImage[sid]
   await nextTick()
   syncCounts()
 }
 
 function getStudentName(sid) {
   return rosterStudents.value.find(s => s.student_id === sid)?.name || sid
+}
+
+async function handleLeaveImageUpload(sid, e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  uploadingImage[sid] = true
+  try {
+    const { data } = await uploadLeaveSlip(file)
+    leaveImages[sid] = data.image_path
+  } catch (err) {
+    showGlobalMsg('图片上传失败', 'error')
+  } finally {
+    uploadingImage[sid] = false
+  }
+  e.target.value = ''
+}
+
+const allLeaveImagesUploaded = computed(() => {
+  if (leaveStudents.size === 0) return true
+  for (const sid of leaveStudents) {
+    if (!leaveImages[sid]) return false
+  }
+  return true
+})
+
+const canSubmitAttendance = computed(() => {
+  return !!attDate.value && allLeaveImagesUploaded.value && classroomPhotos.value.length >= 2
+})
+
+async function handleClassroomPhotoUpload(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (classroomPhotos.value.length >= 2) {
+    showGlobalMsg('最多上传2张教室照片', 'error')
+    e.target.value = ''
+    return
+  }
+  uploadingClassroomPhoto.value = true
+  try {
+    const { data } = await uploadClassroomPhoto(file)
+    classroomPhotos.value.push(data.image_path)
+  } catch (err) {
+    showGlobalMsg('教室照片上传失败', 'error')
+  } finally {
+    uploadingClassroomPhoto.value = false
+  }
+  e.target.value = ''
+}
+
+function removeClassroomPhoto(index) {
+  classroomPhotos.value.splice(index, 1)
 }
 
 async function onClassChange() {
@@ -562,6 +764,24 @@ async function loadRecords() {
   } catch {}
 }
 
+async function exportRecords() {
+  try {
+    const res = await exportAttendanceRecords(selectedClass.value, weekNumber.value)
+    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `考勤记录_${selectedClass.value || '全部'}_第${weekNumber.value}周.csv`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    showGlobalMsg('导出失败', 'error')
+  }
+}
+
 async function loadRoster() {
   try {
     const { data } = await getRoster(selectedClass.value)
@@ -572,7 +792,7 @@ async function loadRoster() {
 async function loadCheckinCourses() {
   if (!checkinCalClass.value) { checkinCourses.value = []; return }
   try {
-    const { data } = await getSchedule(checkinCalClass.value, weekNumber.value)
+    const { data } = await getSchedule(checkinCalClass.value, 0)
     checkinCourses.value = data
   } catch {}
 }
@@ -627,9 +847,13 @@ async function addCourseManually() {
 
 function selectCourse(c) {
   selectedCourse.value = c
+  attDate.value = isoFromDateStr(c.date_str)
   Object.assign(attForm, { sick_leave_count: 0, official_leave_count: 0, personal_leave_count: 0, late_count: 0, early_leave_count: 0, absent_count: 0, leave_details: '' })
   leaveStudents.clear()
   Object.keys(leaveReasons).forEach(k => delete leaveReasons[k])
+  Object.keys(leaveImages).forEach(k => delete leaveImages[k])
+  Object.keys(uploadingImage).forEach(k => delete uploadingImage[k])
+  classroomPhotos.value = []
 }
 
 function buildLeaveDetails() {
@@ -647,13 +871,28 @@ function buildLeaveDetails() {
 
 async function submitAttendance() {
   if (!selectedCourse.value) return
+  if (!attDate.value) {
+    showGlobalMsg('请先选择上课日期', 'error')
+    return
+  }
   submitting.value = true
   try {
     const details = buildLeaveDetails()
+    const leaveSlipsList = []
+    for (const sid of leaveStudents) {
+      if (leaveImages[sid]) {
+        leaveSlipsList.push({
+          student_id: sid,
+          student_name: getStudentName(sid),
+          reason: leaveReasons[sid] || '病假',
+          image_path: leaveImages[sid],
+        })
+      }
+    }
     await createAttendanceRecord({
       schedule_id: selectedCourse.value.id,
       class_name: selectedClass.value,
-      date_str: selectedCourse.value.date_str || '',
+      date_str: attDate.value,
       day_of_week: selectedCourse.value.day_of_week,
       period: selectedCourse.value.period,
       course_name: selectedCourse.value.course_name,
@@ -667,11 +906,17 @@ async function submitAttendance() {
       absent_count: attForm.absent_count,
       leave_details: details,
       week_number: weekNumber.value,
+      leave_slips: leaveSlipsList,
+      classroom_photos: classroomPhotos.value,
     })
     showGlobalMsg('考勤提交成功')
     selectedCourse.value = null
+    attDate.value = ''
     leaveStudents.clear()
     Object.keys(leaveReasons).forEach(k => delete leaveReasons[k])
+    Object.keys(leaveImages).forEach(k => delete leaveImages[k])
+    Object.keys(uploadingImage).forEach(k => delete uploadingImage[k])
+    classroomPhotos.value = []
     loadRecords()
   } catch (err) {
     showGlobalMsg(err.response?.data?.detail || '提交失败', 'error')
@@ -693,14 +938,17 @@ async function renderQR(code) {
 }
 
 async function startCheckIn() {
-  if (!checkinClass.value || !checkinCourse.value) return
+  const cls = effectiveCheckinClass.value
+  const course = effectiveCheckinCourse.value
+  if (!cls || !course) return
   creatingSession.value = true
   try {
+    const scheduleId = checkinScheduleId.value || mobileSelectedCheckinCourse.value?.id || null
     const { data } = await createCheckInSession({
-      class_name: checkinClass.value,
-      course_name: checkinCourse.value,
+      class_name: cls,
+      course_name: course,
       expire_minutes: checkinExpire.value,
-      schedule_id: checkinScheduleId.value,
+      schedule_id: scheduleId,
     })
     activeSession.value = data
     localStorage.setItem('activeCheckinCode', data.code)

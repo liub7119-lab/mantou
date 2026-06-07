@@ -4,13 +4,17 @@
 
 import csv
 import io
+import json
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..database import get_db
 from ..models import (
     AttendanceRecord,
@@ -18,6 +22,7 @@ from ..models import (
     CheckInSession,
     ClassRoster,
     CourseSchedule,
+    LeaveSlip,
     User,
 )
 from ..schemas import (
@@ -164,6 +169,75 @@ async def get_class_size(
     return {"class_name": class_name, "size": count}
 
 
+@router.post("/roster/add", response_model=ClassRosterOut, summary="手动添加学生到花名册")
+async def add_roster_student(
+    student_id: str = Query(..., description="学号"),
+    name: str = Query(..., description="姓名"),
+    class_name: str = Query(..., description="班级"),
+    gender: str = Query("", description="性别"),
+    phone: str = Query("", description="电话"),
+    current_user: User = Depends(require_monitor_or_counselor),
+    db: Session = Depends(get_db),
+):
+    existing = db.query(ClassRoster).filter(ClassRoster.student_id == student_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="该学号已存在")
+    roster = ClassRoster(
+        student_id=student_id,
+        name=name,
+        class_name=class_name,
+        gender=gender,
+        phone=phone,
+    )
+    db.add(roster)
+    db.commit()
+    db.refresh(roster)
+    return roster
+
+
+@router.put("/roster/{roster_id}", response_model=ClassRosterOut, summary="编辑花名册学生信息")
+async def update_roster_student(
+    roster_id: int,
+    name: str = Query(None, description="姓名"),
+    student_id: str = Query(None, description="学号"),
+    class_name: str = Query(None, description="班级"),
+    gender: str = Query(None, description="性别"),
+    phone: str = Query(None, description="电话"),
+    current_user: User = Depends(require_monitor_or_counselor),
+    db: Session = Depends(get_db),
+):
+    roster = db.query(ClassRoster).filter(ClassRoster.id == roster_id).first()
+    if not roster:
+        raise HTTPException(status_code=404, detail="学生不存在")
+    if name is not None:
+        roster.name = name.strip()
+    if student_id is not None:
+        roster.student_id = student_id.strip()
+    if class_name is not None:
+        roster.class_name = class_name.strip()
+    if gender is not None:
+        roster.gender = gender.strip()
+    if phone is not None:
+        roster.phone = phone.strip()
+    db.commit()
+    db.refresh(roster)
+    return roster
+
+
+@router.delete("/roster/{roster_id}", response_model=MessageResponse, summary="删除花名册学生")
+async def delete_roster_student(
+    roster_id: int,
+    current_user: User = Depends(require_monitor_or_counselor),
+    db: Session = Depends(get_db),
+):
+    roster = db.query(ClassRoster).filter(ClassRoster.id == roster_id).first()
+    if not roster:
+        raise HTTPException(status_code=404, detail="学生不存在")
+    db.delete(roster)
+    db.commit()
+    return MessageResponse(message="已删除")
+
+
 # ──────────────────────────────────────────────
 # 课程表管理
 # ──────────────────────────────────────────────
@@ -242,6 +316,32 @@ async def get_schedule(
         q = q.filter(CourseSchedule.week_number == week_number)
     day_order = {"周一": 1, "周二": 2, "周三": 3, "周四": 4, "周五": 5, "周六": 6, "周日": 7}
     results = q.all()
+
+    if not results and week_number > 1:
+        week1 = db.query(CourseSchedule).filter(
+            CourseSchedule.class_name == class_name,
+            CourseSchedule.week_number == 1,
+        ).all()
+        for c in week1:
+            new_course = CourseSchedule(
+                class_name=c.class_name,
+                week_number=week_number,
+                day_of_week=c.day_of_week,
+                period=c.period,
+                course_name=c.course_name,
+                teacher=c.teacher,
+                classroom=c.classroom,
+                date_str="",
+                created_by=current_user.id,
+            )
+            db.add(new_course)
+        if week1:
+            db.commit()
+            results = db.query(CourseSchedule).filter(
+                CourseSchedule.class_name == class_name,
+                CourseSchedule.week_number == week_number,
+            ).all()
+
     results.sort(key=lambda c: (c.week_number, day_order.get(c.day_of_week, 0), c.period))
     return results
 
@@ -260,6 +360,75 @@ async def delete_schedule(
     return MessageResponse(message="已删除")
 
 
+@router.put("/schedule/{schedule_id}", response_model=CourseScheduleOut, summary="编辑课程")
+async def update_schedule(
+    schedule_id: int,
+    data: CourseScheduleCreate,
+    current_user: User = Depends(require_monitor_or_counselor),
+    db: Session = Depends(get_db),
+):
+    course = db.query(CourseSchedule).filter(CourseSchedule.id == schedule_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    course.day_of_week = data.day_of_week.strip()
+    course.period = data.period.strip()
+    course.course_name = data.course_name.strip()
+    course.teacher = (data.teacher or "").strip()
+    course.classroom = (data.classroom or "").strip()
+    course.date_str = (data.date_str or "").strip()
+    db.commit()
+    db.refresh(course)
+    return course
+
+
+# ──────────────────────────────────────────────
+# 假条图片上传
+# ──────────────────────────────────────────────
+
+@router.post("/leave-slip/upload", summary="上传假条图片")
+async def upload_leave_slip(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_monitor_or_counselor),
+):
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+        raise HTTPException(status_code=400, detail="仅支持 jpg/png/webp 图片")
+
+    save_dir = Path(settings.UPLOAD_DIR) / "leave_slips"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = save_dir / filename
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    return {"image_path": f"/uploads/leave_slips/{filename}"}
+
+
+@router.post("/classroom-photo/upload", summary="上传教室照片")
+async def upload_classroom_photo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_monitor_or_counselor),
+):
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+        raise HTTPException(status_code=400, detail="仅支持 jpg/png/webp 图片")
+
+    save_dir = Path(settings.UPLOAD_DIR) / "classroom_photos"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = save_dir / filename
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    return {"image_path": f"/uploads/classroom_photos/{filename}"}
+
+
 # ──────────────────────────────────────────────
 # 一键考勤
 # ──────────────────────────────────────────────
@@ -270,6 +439,9 @@ async def create_attendance(
     current_user: User = Depends(require_monitor_or_counselor),
     db: Session = Depends(get_db),
 ):
+    if len(data.classroom_photos) < 2:
+        raise HTTPException(status_code=400, detail="请上传至少2张教室照片")
+
     class_size = data.class_size
     if class_size == 0:
         count = db.query(ClassRoster).filter(ClassRoster.class_name == data.class_name).count()
@@ -304,6 +476,7 @@ async def create_attendance(
         attendance_rate=rate,
         attendance_rate_with_leave=rate_with_leave,
         leave_details=data.leave_details,
+        classroom_photos=json.dumps(data.classroom_photos),
         checker=data.checker or current_user.name,
         week_number=data.week_number,
         created_by=current_user.id,
@@ -311,6 +484,19 @@ async def create_attendance(
     db.add(record)
     db.commit()
     db.refresh(record)
+
+    if data.leave_slips:
+        for slip in data.leave_slips:
+            leave_slip = LeaveSlip(
+                attendance_record_id=record.id,
+                student_id=slip.student_id,
+                student_name=slip.student_name,
+                reason=slip.reason,
+                image_path=slip.image_path,
+            )
+            db.add(leave_slip)
+        db.commit()
+
     return record
 
 
@@ -414,10 +600,11 @@ async def export_records(
 
     output.seek(0)
     filename = f"考勤记录_{class_name or '全部'}_{datetime.now().strftime('%Y%m%d')}.csv"
+    encoded_filename = quote(filename)
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
     )
 
 

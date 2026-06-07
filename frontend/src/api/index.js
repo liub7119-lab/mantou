@@ -149,6 +149,18 @@ export function getRosterClasses() {
   return api.get('/attendance/roster/classes')
 }
 
+export function addRosterStudent(params) {
+  return api.post('/attendance/roster/add', null, { params })
+}
+
+export function updateRosterStudent(id, params) {
+  return api.put(`/attendance/roster/${id}`, null, { params })
+}
+
+export function deleteRosterStudent(id) {
+  return api.delete(`/attendance/roster/${id}`)
+}
+
 export function getClassSize(className) {
   return api.get('/attendance/roster/class-size', { params: { class_name: className } })
 }
@@ -175,8 +187,28 @@ export function deleteSchedule(id) {
   return api.delete(`/attendance/schedule/${id}`)
 }
 
+export function updateSchedule(id, data) {
+  return api.put(`/attendance/schedule/${id}`, data)
+}
+
 export function createAttendanceRecord(data) {
   return api.post('/attendance/record', data)
+}
+
+export function uploadLeaveSlip(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/attendance/leave-slip/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export function uploadClassroomPhoto(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/attendance/classroom-photo/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }
 
 export function listAttendanceRecords(className = '', weekNumber = 0) {
@@ -226,6 +258,16 @@ export function listMonitors() {
 
 export function listAllStudents() {
   return api.get('/auth/students')
+}
+
+// ── 成长画像 ──
+
+export function getMyProfile() {
+  return api.get('/profile/student/me')
+}
+
+export function getClassOverview(className = '') {
+  return api.get('/profile/counselor/class-overview', { params: { class_name: className } })
 }
 
 export default api

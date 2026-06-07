@@ -14,6 +14,7 @@
       @add-course="handleCalendarAddCourse"
       @load-checkin-courses="handleCalendarLoadCheckinCourses"
       @select-checkin-course="handleCalendarSelectCheckinCourse"
+      @courses-updated="handleCoursesUpdated"
     />
     <InfoPanel
       v-else
@@ -24,9 +25,9 @@
 
     <!-- Main -->
     <main
-      class="transition-all duration-300 ease-out min-h-screen"
+      class="transition-all duration-300 ease-out min-h-screen pb-16 md:pb-0"
       :style="{
-        marginLeft: sidebarExpanded ? '224px' : '72px',
+        marginLeft: isMobile ? '0' : (sidebarExpanded ? '224px' : '72px'),
         marginRight: showInfoPanel ? '304px' : '0',
       }"
     >
@@ -38,8 +39,8 @@
           </p>
         </div>
         <div class="flex items-center gap-3">
-          <!-- Search -->
-          <div class="relative">
+          <!-- Search (hidden on mobile) -->
+          <div class="relative hidden md:block">
             <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color: #999;" />
             <input
               type="text"
@@ -48,8 +49,8 @@
               style="background: #F2F4F7; color: #333; --tw-ring-color: #6ECAFF;"
             />
           </div>
-          <!-- Bell -->
-          <button class="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-colors duration-150" style="background: #F2F4F7;" @mouseenter="$event.currentTarget.style.background='#E8F4FD'" @mouseleave="$event.currentTarget.style.background='#F2F4F7'">
+          <!-- Bell (hidden on mobile) -->
+          <button class="w-10 h-10 rounded-full hidden md:flex items-center justify-center cursor-pointer transition-colors duration-150" style="background: #F2F4F7;" @mouseenter="$event.currentTarget.style.background='#E8F4FD'" @mouseleave="$event.currentTarget.style.background='#F2F4F7'">
             <Bell class="w-[18px] h-[18px]" style="color: #333;" />
           </button>
           <!-- Logout -->
@@ -61,7 +62,7 @@
             @mouseleave="$event.currentTarget.style.background='transparent';$event.currentTarget.style.color='#999'"
           >
             <LogOut class="w-4 h-4" />
-            退出
+            <span class="hidden md:inline">退出</span>
           </button>
         </div>
       </header>
@@ -70,13 +71,31 @@
         <router-view />
       </div>
     </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 md:hidden flex items-center justify-around h-14" style="background: #FFFFFF; border-top: 1px solid #E8ECF0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);">
+      <router-link
+        v-for="item in mobileNavItems"
+        :key="item.path"
+        :to="item.path"
+        class="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors"
+        :style="isActive(item.path) ? 'color: #6ECAFF;' : 'color: #999;'"
+      >
+        <component :is="item.icon" class="w-5 h-5" />
+        <span class="text-[10px]">{{ item.label }}</span>
+      </router-link>
+    </nav>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { LogOut, Search, Bell } from 'lucide-vue-next'
+import {
+  LogOut, Search, Bell,
+  Home, Upload, MessageCircle, ClipboardCheck, ScanLine,
+  UserCircle, LayoutDashboard, MessageSquareText, BarChart3, Users,
+} from 'lucide-vue-next'
 import AppSidebar from './AppSidebar.vue'
 import InfoPanel from './InfoPanel.vue'
 import CourseCalendarPanel from './CourseCalendarPanel.vue'
@@ -89,6 +108,44 @@ const route = useRoute()
 const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
 const sidebarExpanded = ref(false)
 const students = ref([])
+
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+function onResize() { windowWidth.value = window.innerWidth }
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
+const isMobile = computed(() => windowWidth.value < 768)
+
+function isActive(path) {
+  return route.path === path
+}
+
+const mobileNavItems = computed(() => {
+  if (user.value.role === 'counselor') {
+    return [
+      { path: '/', label: '首页', icon: Home },
+      { path: '/admin', label: '成果', icon: LayoutDashboard },
+      { path: '/admin/feedback', label: '树洞', icon: MessageSquareText },
+      { path: '/admin/attendance', label: '考勤', icon: BarChart3 },
+      { path: '/admin/profile', label: '画像', icon: Users },
+    ]
+  }
+  if (user.value.role === 'monitor') {
+    return [
+      { path: '/', label: '首页', icon: Home },
+      { path: '/attendance', label: '考勤', icon: ClipboardCheck },
+      { path: '/upload', label: '上传', icon: Upload },
+      { path: '/feedback', label: '树洞', icon: MessageCircle },
+      { path: '/profile', label: '画像', icon: UserCircle },
+    ]
+  }
+  return [
+    { path: '/', label: '首页', icon: Home },
+    { path: '/upload', label: '上传', icon: Upload },
+    { path: '/feedback', label: '树洞', icon: MessageCircle },
+    { path: '/attendance', label: '签到', icon: ScanLine },
+    { path: '/profile', label: '画像', icon: UserCircle },
+  ]
+})
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -123,8 +180,7 @@ const greeting = computed(() => {
 })
 
 const showInfoPanel = computed(() => {
-  if (typeof window !== 'undefined' && window.innerWidth < 1024) return false
-  return true
+  return windowWidth.value >= 1024
 })
 
 const isAttendancePage = computed(() => {
@@ -147,6 +203,9 @@ function handleCalendarAddCourse() {
 }
 function handleCalendarLoadCheckinCourses() {
   calendarStore._loadCheckinCoursesFlag.value = Date.now()
+}
+function handleCoursesUpdated() {
+  calendarStore._coursesUpdatedFlag.value = Date.now()
 }
 function handleCalendarSelectCheckinCourse(c) {
   calendarStore.checkinClass.value = calendarStore.checkinCalClass.value

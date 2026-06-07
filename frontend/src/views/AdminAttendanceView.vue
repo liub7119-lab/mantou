@@ -85,6 +85,50 @@
         <Inbox class="w-8 h-8 mx-auto mb-2" style="color: #CBD5E1;" />
         <p class="text-xs" style="color: #94A3B8;">暂无考勤数据，纪律委员提交考勤后将在此处显示统计图表</p>
       </div>
+
+      <!-- 按上课日期的考勤明细 -->
+      <div v-if="stats && stats.total_records > 0" class="bg-white rounded-3xl p-7" style="box-shadow: 0 2px 16px rgba(125,175,206,0.06);">
+        <h3 class="text-sm font-semibold mb-4 flex items-center gap-2" style="color: #1E293B;">
+          <CalendarDays class="w-4 h-4" style="color: #10B981;" />
+          各次考勤明细（按上课日期）
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr style="background: #F0FDF4;">
+                <th class="px-3 py-3 text-left rounded-l-xl font-medium" style="color: #059669;">上课日期</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">星期</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">周数</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">班级</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">课程</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">节次</th>
+                <th class="px-3 py-3 text-center font-medium" style="color: #059669;">旷课</th>
+                <th class="px-3 py-3 text-center font-medium" style="color: #059669;">迟到</th>
+                <th class="px-3 py-3 text-center rounded-r-xl font-medium" style="color: #059669;">到课率</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in statsRecords" :key="r.id" class="border-b" style="border-color: #F1F5F9;">
+                <td class="px-3 py-3 font-medium" style="color: #10B981;">{{ r.date_str || '—' }}</td>
+                <td class="px-3 py-3" style="color: #475569;">{{ r.day_of_week }}</td>
+                <td class="px-3 py-3" style="color: #8B5CF6;">第{{ r.week_number }}周</td>
+                <td class="px-3 py-3" style="color: #475569;">{{ r.class_name }}</td>
+                <td class="px-3 py-3" style="color: #475569;">{{ r.course_name }}</td>
+                <td class="px-3 py-3" style="color: #94A3B8;">{{ r.period }}节</td>
+                <td class="px-3 py-3 text-center" :style="r.absent_count > 0 ? 'color: #EF4444;' : 'color: #94A3B8;'">{{ r.absent_count }}</td>
+                <td class="px-3 py-3 text-center" :style="r.late_count > 0 ? 'color: #EC4899;' : 'color: #94A3B8;'">{{ r.late_count }}</td>
+                <td class="px-3 py-3 text-center">
+                  <span class="px-2 py-1 rounded-lg font-medium"
+                    :style="parseInt(r.attendance_rate) >= 95 ? 'background: #ECFDF5; color: #10B981;' :
+                             parseInt(r.attendance_rate) >= 90 ? 'background: #FFFBEB; color: #F59E0B;' :
+                             'background: #FEF2F2; color: #EF4444;'"
+                  >{{ r.attendance_rate }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ========== 考勤数据 ========== -->
@@ -123,13 +167,18 @@
           <table class="w-full text-xs">
             <thead>
               <tr style="background: #F0FDF4;">
-                <th class="px-3 py-3 text-left rounded-l-xl font-medium" style="color: #059669;">日期</th>
+                <th class="px-3 py-3 text-left rounded-l-xl font-medium" style="color: #059669;">周数</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">日期</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">星期</th>
                 <th class="px-3 py-3 text-left font-medium" style="color: #059669;">班级</th>
                 <th class="px-3 py-3 text-left font-medium" style="color: #059669;">课程</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">节次</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">人数</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">实到</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">病/公假</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">事假</th>
+                <th class="px-3 py-3 text-center font-medium" style="color: #059669;">迟到</th>
+                <th class="px-3 py-3 text-center font-medium" style="color: #059669;">早退</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">旷课</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">到课率</th>
                 <th class="px-3 py-3 text-left rounded-r-xl font-medium" style="color: #059669;">情况说明</th>
@@ -137,13 +186,18 @@
             </thead>
             <tbody>
               <tr v-for="r in records" :key="r.id" class="border-b" style="border-color: #F1F5F9;">
-                <td class="px-3 py-3" style="color: #1E293B;">{{ r.date_str }} {{ r.day_of_week }}</td>
+                <td class="px-3 py-3 font-medium" style="color: #8B5CF6;">第{{ r.week_number }}周</td>
+                <td class="px-3 py-3 font-medium" style="color: #10B981;">{{ r.date_str || formatDate(r.created_at) }}</td>
+                <td class="px-3 py-3" style="color: #475569;">{{ r.day_of_week }}</td>
                 <td class="px-3 py-3" style="color: #475569;">{{ r.class_name }}</td>
                 <td class="px-3 py-3" style="color: #475569;">{{ r.course_name }}</td>
+                <td class="px-3 py-3" style="color: #94A3B8;">{{ r.period }}节</td>
                 <td class="px-3 py-3 text-center" style="color: #1E293B;">{{ r.class_size }}</td>
                 <td class="px-3 py-3 text-center font-medium" style="color: #10B981;">{{ r.actual_count }}</td>
                 <td class="px-3 py-3 text-center" style="color: #3B82F6;">{{ r.sick_leave_count }}</td>
                 <td class="px-3 py-3 text-center" style="color: #F59E0B;">{{ r.personal_leave_count }}</td>
+                <td class="px-3 py-3 text-center" :style="r.late_count > 0 ? 'color: #EC4899;' : 'color: #94A3B8;'">{{ r.late_count }}</td>
+                <td class="px-3 py-3 text-center" :style="r.early_leave_count > 0 ? 'color: #8B5CF6;' : 'color: #94A3B8;'">{{ r.early_leave_count }}</td>
                 <td class="px-3 py-3 text-center font-medium" :style="r.absent_count > 0 ? 'color: #EF4444;' : 'color: #94A3B8;'">{{ r.absent_count }}</td>
                 <td class="px-3 py-3 text-center">
                   <span class="px-2 py-1 rounded-lg font-medium"
@@ -221,6 +275,109 @@
         </div>
       </div>
     </div>
+
+    <!-- ========== 花名册管理 ========== -->
+    <div v-if="currentTab === 'roster'" class="space-y-6">
+      <div class="rounded-3xl p-7 flex gap-5 items-end flex-wrap" style="background: #FFFBEB; box-shadow: 0 2px 16px rgba(245,158,11,0.06);">
+        <div>
+          <label class="block text-xs mb-1.5" style="color: #94A3B8;">班级</label>
+          <select v-model="rosterFilterClass" class="admin-att-input cursor-pointer" @change="loadRoster">
+            <option value="">全部</option>
+            <option v-for="c in classes" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+        <button @click="loadRoster" class="px-5 py-2.5 rounded-full text-sm font-medium text-white cursor-pointer flex items-center gap-2" style="background: #F59E0B;">
+          <Search class="w-3.5 h-3.5" />
+          查询
+        </button>
+        <button @click="showAddRoster = true" class="px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer flex items-center gap-2" style="background: #ECFDF5; color: #10B981;">
+          <Plus class="w-3.5 h-3.5" />
+          添加学生
+        </button>
+        <label class="px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer flex items-center gap-2" style="background: #EFF6FF; color: #3B82F6;">
+          <Download class="w-3.5 h-3.5" />
+          导入CSV
+          <input type="file" accept=".csv" class="hidden" @change="handleRosterImportFile" />
+        </label>
+      </div>
+
+      <p v-if="rosterMsg" class="text-sm font-medium px-4" :style="rosterMsgType === 'success' ? 'color: #10B981;' : 'color: #EF4444;'">{{ rosterMsg }}</p>
+
+      <!-- 添加学生表单 -->
+      <div v-if="showAddRoster" class="bg-white rounded-3xl p-7" style="box-shadow: 0 2px 16px rgba(125,175,206,0.06);">
+        <h3 class="text-sm font-semibold mb-4 flex items-center gap-2" style="color: #1E293B;">
+          <Plus class="w-4 h-4" style="color: #10B981;" />
+          添加学生
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <input v-model="newRosterForm.student_id" class="admin-att-input" placeholder="学号（必填）" />
+          <input v-model="newRosterForm.name" class="admin-att-input" placeholder="姓名（必填）" />
+          <input v-model="newRosterForm.class_name" class="admin-att-input" placeholder="班级（必填，如 2025级英语1班）" />
+          <input v-model="newRosterForm.gender" class="admin-att-input" placeholder="性别" />
+          <input v-model="newRosterForm.phone" class="admin-att-input" placeholder="电话" />
+        </div>
+        <div class="flex gap-3">
+          <button @click="addNewRoster" class="px-5 py-2.5 rounded-full text-sm font-medium text-white cursor-pointer" style="background: #10B981;">确认添加</button>
+          <button @click="showAddRoster = false" class="px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer" style="background: #F1F5F9; color: #94A3B8;">取消</button>
+        </div>
+      </div>
+
+      <!-- 花名册列表 -->
+      <div class="bg-white rounded-3xl p-7" style="box-shadow: 0 2px 16px rgba(125,175,206,0.06);">
+        <div v-if="rosterLoading" class="text-center py-10">
+          <Loader2 class="w-6 h-6 animate-spin mx-auto" style="color: #F59E0B;" />
+        </div>
+        <div v-else-if="rosterList.length === 0" class="text-center py-10">
+          <Inbox class="w-8 h-8 mx-auto mb-2" style="color: #CBD5E1;" />
+          <p class="text-xs" style="color: #94A3B8;">请选择班级后查询花名册</p>
+        </div>
+        <div v-else class="overflow-x-auto">
+          <p class="text-xs mb-3" style="color: #94A3B8;">共 {{ rosterList.length }} 人</p>
+          <table class="w-full text-xs">
+            <thead>
+              <tr style="background: #FFFBEB;">
+                <th class="px-3 py-3 text-left rounded-l-xl font-medium" style="color: #D97706;">学号</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #D97706;">姓名</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #D97706;">班级</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #D97706;">性别</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #D97706;">电话</th>
+                <th class="px-3 py-3 text-center rounded-r-xl font-medium" style="color: #D97706;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in rosterList" :key="r.id" class="border-b" style="border-color: #F1F5F9;">
+                <template v-if="editingRoster === r.id">
+                  <td class="px-3 py-2"><input v-model="rosterEditForm.student_id" class="admin-att-input text-xs py-2" /></td>
+                  <td class="px-3 py-2"><input v-model="rosterEditForm.name" class="admin-att-input text-xs py-2" /></td>
+                  <td class="px-3 py-2"><input v-model="rosterEditForm.class_name" class="admin-att-input text-xs py-2" /></td>
+                  <td class="px-3 py-2"><input v-model="rosterEditForm.gender" class="admin-att-input text-xs py-2" /></td>
+                  <td class="px-3 py-2"><input v-model="rosterEditForm.phone" class="admin-att-input text-xs py-2" /></td>
+                  <td class="px-3 py-2 text-center">
+                    <div class="flex justify-center gap-1">
+                      <button @click="saveRosterEdit" class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style="background: #ECFDF5;"><Check class="w-3.5 h-3.5" style="color: #10B981;" /></button>
+                      <button @click="editingRoster = null" class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style="background: #F1F5F9;"><X class="w-3.5 h-3.5" style="color: #94A3B8;" /></button>
+                    </div>
+                  </td>
+                </template>
+                <template v-else>
+                  <td class="px-3 py-3" style="color: #1E293B;">{{ r.student_id }}</td>
+                  <td class="px-3 py-3 font-medium" style="color: #1E293B;">{{ r.name }}</td>
+                  <td class="px-3 py-3" style="color: #475569;">{{ r.class_name }}</td>
+                  <td class="px-3 py-3" style="color: #94A3B8;">{{ r.gender || '—' }}</td>
+                  <td class="px-3 py-3" style="color: #94A3B8;">{{ r.phone || '—' }}</td>
+                  <td class="px-3 py-3 text-center">
+                    <div class="flex justify-center gap-1">
+                      <button @click="startEditRoster(r)" class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style="background: #EFF6FF;"><Pencil class="w-3.5 h-3.5" style="color: #3B82F6;" /></button>
+                      <button @click="removeRoster(r)" class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style="background: #FEF2F2;"><Trash2 class="w-3.5 h-3.5" style="color: #EF4444;" /></button>
+                    </div>
+                  </td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -228,12 +385,13 @@
 import { ref, onMounted, nextTick } from 'vue'
 import {
   BarChart3, Search, Loader2, Inbox, Shield, Users, UserPlus,
-  ClipboardCheck, UserCog, PieChart, Download,
+  ClipboardCheck, UserCog, PieChart, Download, Pencil, Trash2, Plus, X, Check, CalendarDays,
 } from 'lucide-vue-next'
 import { Chart, registerables } from 'chart.js'
 import {
   getRosterClasses, listAttendanceRecords, getAttendanceStats,
   listMonitors, listAllStudents, setMonitor, exportAttendanceRecords,
+  getRoster, addRosterStudent, updateRosterStudent, deleteRosterStudent, importRoster,
 } from '../api'
 
 Chart.register(...registerables)
@@ -241,6 +399,7 @@ Chart.register(...registerables)
 const tabList = [
   { key: 'stats', label: '统计概览', icon: PieChart, color: '#10B981' },
   { key: 'records', label: '考勤数据', icon: ClipboardCheck, color: '#3B82F6' },
+  { key: 'roster', label: '花名册', icon: Users, color: '#F59E0B' },
   { key: 'monitors', label: '纪律委员', icon: UserCog, color: '#8B5CF6' },
 ]
 
@@ -255,10 +414,17 @@ const monitors = ref([])
 const allStudents = ref([])
 
 const statsFilter = ref({ class_name: '', week: 0, teacher: '' })
+const statsRecords = ref([])
 const barChartRef = ref(null)
 const pieChartRef = ref(null)
 let barChart = null
 let pieChart = null
+
+function formatDate(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return `${d.getMonth() + 1}.${d.getDate()}`
+}
 
 async function loadRecords() {
   loading.value = true
@@ -280,6 +446,8 @@ async function loadStats() {
     if (statsFilter.value.teacher) {
       data = data.filter(r => r.teacher?.includes(statsFilter.value.teacher))
     }
+
+    statsRecords.value = data
 
     const total = data.length
     const rates = []
@@ -361,11 +529,15 @@ function renderPieChart({ totalSick, totalPersonal, totalLate, totalEarly, total
 async function exportRecords() {
   try {
     const res = await exportAttendanceRecords(filterClass.value, filterWeek.value)
-    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `考勤记录_${filterClass.value || '全部'}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.style.display = 'none'
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
     window.URL.revokeObjectURL(url)
   } catch (err) {
     console.error('导出失败', err)
@@ -410,6 +582,87 @@ onMounted(async () => {
   loadRecords()
   loadMonitors()
 })
+
+// ──── 花名册管理 ────
+const rosterFilterClass = ref('')
+const rosterList = ref([])
+const rosterLoading = ref(false)
+const editingRoster = ref(null)
+const rosterEditForm = ref({ name: '', student_id: '', class_name: '', gender: '', phone: '' })
+const showAddRoster = ref(false)
+const newRosterForm = ref({ student_id: '', name: '', class_name: '', gender: '', phone: '' })
+const rosterMsg = ref('')
+const rosterMsgType = ref('success')
+
+async function loadRoster() {
+  rosterLoading.value = true
+  try {
+    const { data } = await getRoster(rosterFilterClass.value)
+    rosterList.value = data
+  } catch {} finally { rosterLoading.value = false }
+}
+
+function startEditRoster(r) {
+  editingRoster.value = r.id
+  rosterEditForm.value = { name: r.name, student_id: r.student_id, class_name: r.class_name, gender: r.gender || '', phone: r.phone || '' }
+}
+
+async function saveRosterEdit() {
+  try {
+    await updateRosterStudent(editingRoster.value, rosterEditForm.value)
+    editingRoster.value = null
+    loadRoster()
+  } catch (err) {
+    rosterMsg.value = err.response?.data?.detail || '保存失败'
+    rosterMsgType.value = 'error'
+  }
+}
+
+async function removeRoster(r) {
+  if (!confirm(`确定删除「${r.name}」？`)) return
+  try {
+    await deleteRosterStudent(r.id)
+    loadRoster()
+  } catch {}
+}
+
+async function addNewRoster() {
+  if (!newRosterForm.value.student_id || !newRosterForm.value.name || !newRosterForm.value.class_name) {
+    rosterMsg.value = '学号、姓名、班级为必填'
+    rosterMsgType.value = 'error'
+    return
+  }
+  try {
+    await addRosterStudent(newRosterForm.value)
+    showAddRoster.value = false
+    newRosterForm.value = { student_id: '', name: '', class_name: '', gender: '', phone: '' }
+    rosterMsg.value = '添加成功'
+    rosterMsgType.value = 'success'
+    loadRoster()
+    const { data } = await getRosterClasses()
+    classes.value = data.classes
+  } catch (err) {
+    rosterMsg.value = err.response?.data?.detail || '添加失败'
+    rosterMsgType.value = 'error'
+  }
+}
+
+async function handleRosterImportFile(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  try {
+    const { data } = await importRoster(file)
+    rosterMsg.value = data.message
+    rosterMsgType.value = 'success'
+    loadRoster()
+    const res = await getRosterClasses()
+    classes.value = res.data.classes
+  } catch (err) {
+    rosterMsg.value = err.response?.data?.detail || '导入失败'
+    rosterMsgType.value = 'error'
+  }
+  e.target.value = ''
+}
 </script>
 
 <style scoped>

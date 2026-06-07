@@ -258,10 +258,23 @@ class ClassRoster(Base):
     student_id = Column(String(20), nullable=False, index=True, comment="学号")
     name = Column(String(50), nullable=False, comment="姓名")
     gender = Column(String(10), default="", comment="性别")
-    class_name = Column(String(50), nullable=False, index=True, comment="年级专业班级")
+    ethnicity = Column(String(20), default="", comment="民族")
+    political_status = Column(String(30), default="", comment="政治面貌")
+    id_card = Column(String(30), default="", comment="身份证号")
+    phone = Column(String(20), default="", comment="本人使用电话号码")
+    hometown = Column(String(100), default="", comment="生源地")
+    home_address = Column(String(300), default="", comment="家庭实际居住地址")
+    parent_name = Column(String(50), default="", comment="家长姓名")
+    parent_phone = Column(String(20), default="", comment="家长手机号码")
+    dorm_nickname = Column(String(50), default="", comment="实际学校居住地址（俗称）")
+    dorm_address = Column(String(200), default="", comment="实际居住标准地址")
     major = Column(String(100), default="", comment="所属院系")
-    phone = Column(String(20), default="", comment="联系电话")
+    education_level = Column(String(20), default="", comment="层次（本科、专升本）")
+    grade = Column(String(20), default="", comment="年级")
+    specialty = Column(String(100), default="", comment="专业")
+    class_name = Column(String(50), nullable=False, index=True, comment="年级专业班级")
     counselor = Column(String(50), default="", comment="辅导员")
+    remark = Column(String(500), default="", comment="备注")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     def __repr__(self):
@@ -323,6 +336,7 @@ class AttendanceRecord(Base):
     violation_rate = Column(String(10), default="0%", comment="违纪率")
 
     leave_details = Column(Text, default="", comment="请假、违纪情况说明")
+    classroom_photos = Column(Text, default="", comment="教室照片路径（JSON数组）")
     checker = Column(String(50), default="", comment="检查人")
     week_number = Column(Integer, default=0, comment="教学周数")
 
@@ -374,3 +388,21 @@ class CheckInLog(Base):
 
     def __repr__(self):
         return f"<CheckInLog(session={self.session_id}, user={self.user_id})>"
+
+
+# ──────────────────────────────────────────────
+# 假条图片表
+# ──────────────────────────────────────────────
+class LeaveSlip(Base):
+    __tablename__ = "leave_slips"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attendance_record_id = Column(Integer, ForeignKey("attendance_records.id"), nullable=False, comment="关联考勤记录")
+    student_id = Column(String(20), nullable=False, comment="学号")
+    student_name = Column(String(50), default="", comment="学生姓名")
+    reason = Column(String(20), default="", comment="原因：病假/公假/事假/迟到/早退/旷课")
+    image_path = Column(String(300), nullable=False, comment="假条图片路径")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<LeaveSlip(record={self.attendance_record_id}, student={self.student_id})>"

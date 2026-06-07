@@ -4,7 +4,7 @@ Pydantic 数据模型（请求 / 响应 Schema）
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 import re
 
@@ -455,6 +455,15 @@ class AttendanceRecordCreate(BaseModel):
     leave_details: str = Field(default="", description="请假情况说明")
     checker: str = Field(default="", description="检查人")
     week_number: int = Field(default=0, description="教学周数")
+    classroom_photos: List[str] = Field(default=[], description="教室照片路径列表（必须2张）")
+    leave_slips: List["LeaveSlipItem"] = Field(default=[], description="假条图片列表")
+
+
+class LeaveSlipItem(BaseModel):
+    student_id: str = Field(..., description="学号")
+    student_name: str = Field(default="", description="学生姓名")
+    reason: str = Field(default="", description="原因")
+    image_path: str = Field(..., description="假条图片路径")
 
 
 class AttendanceRecordOut(BaseModel):
@@ -482,6 +491,7 @@ class AttendanceRecordOut(BaseModel):
     discipline_count: int
     violation_rate: str
     leave_details: str
+    classroom_photos: str
     checker: str
     week_number: int
     created_at: datetime

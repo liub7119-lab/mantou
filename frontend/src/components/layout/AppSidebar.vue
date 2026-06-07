@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="h-screen fixed left-0 top-0 z-40 flex flex-col transition-all duration-300 ease-out"
+    class="h-screen fixed left-0 top-0 z-40 hidden md:flex flex-col transition-all duration-300 ease-out"
     :class="expanded ? 'w-56' : 'w-[72px]'"
     style="background: #FFFFFF; border-right: 1px solid #E8ECF0;"
     @mouseenter="hovering = true"
@@ -86,6 +86,8 @@ import {
   BarChart3,
   ScanLine,
   Home,
+  UserCircle,
+  Users,
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -111,6 +113,7 @@ const studentNav = [
   { path: '/upload', label: '成果上传', icon: Upload },
   { path: '/feedback', label: '树洞', icon: MessageCircle },
   { path: '/attendance', label: '扫码签到', icon: ScanLine },
+  { path: '/profile', label: '成长画像', icon: UserCircle },
 ]
 
 const monitorNav = [
@@ -118,6 +121,7 @@ const monitorNav = [
   { path: '/attendance', label: '签到考勤', icon: ClipboardCheck },
   { path: '/upload', label: '成果上传', icon: Upload },
   { path: '/feedback', label: '树洞', icon: MessageCircle },
+  { path: '/profile', label: '成长画像', icon: UserCircle },
 ]
 
 const counselorNav = [
@@ -125,6 +129,7 @@ const counselorNav = [
   { path: '/admin', label: '成果管理', icon: LayoutDashboard },
   { path: '/admin/feedback', label: '树洞管理', icon: MessageSquareText },
   { path: '/admin/attendance', label: '考勤管理', icon: BarChart3 },
+  { path: '/admin/profile', label: '班级画像', icon: Users },
 ]
 
 const navItems = computed(() => {

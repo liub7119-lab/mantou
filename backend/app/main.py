@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import SessionLocal, init_db
-from .routers import achievements, attendance, auth, export, feedback
+from .routers import achievements, attendance, auth, export, feedback, profile
 from .services.auth_service import init_counselor_account
 
 
@@ -77,6 +77,10 @@ app.include_router(
     attendance.router,
     prefix=f"{settings.API_PREFIX}/attendance",
     tags=["签到考勤"],
+)
+app.include_router(
+    profile.router,
+    tags=["成长画像"],
 )
 
 

@@ -23,6 +23,7 @@ const _parseImageEvent = ref(null)
 const _confirmParsedFlag = ref(0)
 const _addCourseFlag = ref(0)
 const _loadCheckinCoursesFlag = ref(0)
+const _coursesUpdatedFlag = ref(0)
 
 const dayOptions = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -77,5 +78,6 @@ export function useAttendanceCalendar() {
     _confirmParsedFlag,
     _addCourseFlag,
     _loadCheckinCoursesFlag,
+    _coursesUpdatedFlag,
   }
 }

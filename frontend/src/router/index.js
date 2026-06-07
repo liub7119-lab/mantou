@@ -38,6 +38,12 @@ const routes = [
         meta: { title: '签到考勤', requiresAuth: true },
       },
       {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/ProfileView.vue'),
+        meta: { title: '成长画像', requiresAuth: true },
+      },
+      {
         path: 'admin',
         name: 'Admin',
         component: () => import('../views/AdminView.vue'),
@@ -54,6 +60,12 @@ const routes = [
         name: 'AdminAttendance',
         component: () => import('../views/AdminAttendanceView.vue'),
         meta: { title: '考勤管理', requiresAuth: true, role: 'counselor' },
+      },
+      {
+        path: 'admin/profile',
+        name: 'AdminProfile',
+        component: () => import('../views/AdminProfileView.vue'),
+        meta: { title: '班级画像', requiresAuth: true, role: 'counselor' },
       },
     ],
   },
