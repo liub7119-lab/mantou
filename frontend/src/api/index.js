@@ -226,6 +226,14 @@ export function exportAttendanceRecords(className = '', weekNumber = 0) {
   })
 }
 
+export function getWeekNumber(date) {
+  return api.get('/attendance/week-number', { params: { date } })
+}
+
+export function getSchoolCalendar() {
+  return api.get('/attendance/calendar')
+}
+
 export function createCheckInSession(data) {
   return api.post('/attendance/checkin/create', data)
 }

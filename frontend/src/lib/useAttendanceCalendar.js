@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { getWeekNumber } from '../api'
 
 const classes = ref([])
 const selectedClass = ref('')
@@ -52,6 +53,14 @@ const checkinGroupedCourses = computed(() => {
   return dayOrder.filter(d => grouped[d]).map(d => ({ day: d, courses: grouped[d] }))
 })
 
+async function initWeekNumber() {
+  const today = new Date().toISOString().slice(0, 10)
+  try {
+    const { data } = await getWeekNumber(today)
+    if (data.week_number) weekNumber.value = data.week_number
+  } catch {}
+}
+
 export function useAttendanceCalendar() {
   return {
     classes,
@@ -79,5 +88,6 @@ export function useAttendanceCalendar() {
     _addCourseFlag,
     _loadCheckinCoursesFlag,
     _coursesUpdatedFlag,
+    initWeekNumber,
   }
 }

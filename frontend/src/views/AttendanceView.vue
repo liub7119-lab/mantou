@@ -47,6 +47,7 @@
             <div>
               <label class="block text-xs mb-1.5" style="color: #94A3B8;">教学周数</label>
               <input v-model.number="weekNumber" type="number" min="1" max="20" class="att-input" placeholder="如：第3周" />
+              <p v-if="weekAutoHint" class="text-[10px] mt-1" style="color: #10B981;">{{ weekAutoHint }}</p>
             </div>
             <div>
               <label class="block text-xs mb-1.5" style="color: #94A3B8;">班级人数</label>
@@ -101,7 +102,7 @@
           <h3 class="text-sm font-semibold mb-4 flex items-center gap-2" style="color: #1E293B;">
             <ClipboardList class="w-4 h-4" style="color: #F59E0B;" />
             填写考勤 — {{ selectedCourse.course_name }}
-            <span class="text-[10px] font-normal px-2 py-0.5 rounded-lg" style="background: #EFF6FF; color: #3B82F6;">{{ selectedCourse.day_of_week }} {{ selectedCourse.period }}节</span>
+            <span class="text-[10px] font-normal px-2 py-0.5 rounded-lg" style="background: #EFF6FF; color: #3B82F6;">{{ selectedCourse.day_of_week }} {{ formatPeriod(selectedCourse.period) }}</span>
           </h3>
 
           <!-- 上课日期（必填，由纪律委员填写真实上课日期，而非默认当天） -->
@@ -187,11 +188,12 @@
                     <option value="早退">早退</option>
                     <option value="旷课">旷课</option>
                   </select>
-                  <label class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all"
+                  <label class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all overflow-hidden"
                     :style="leaveImages[sid] ? 'background: #ECFDF5;' : 'background: #FEF2F2;'"
+                    :title="leaveImages[sid] ? '已上传假条，点击更换' : '上传假条'"
                   >
-                    <Loader2 v-if="uploadingImage[sid]" class="w-3.5 h-3.5 animate-spin" style="color: #3B82F6;" />
-                    <ImageIcon v-else-if="leaveImages[sid]" class="w-3.5 h-3.5" style="color: #10B981;" />
+                    <img v-if="leaveImages[sid]" :src="getAssetUrl(leaveImages[sid])" class="w-full h-full object-cover" />
+                    <Loader2 v-else-if="uploadingImage[sid]" class="w-3.5 h-3.5 animate-spin" style="color: #3B82F6;" />
                     <Camera v-else class="w-3.5 h-3.5" style="color: #EF4444;" />
                     <input type="file" accept="image/*" class="hidden" @change="handleLeaveImageUpload(sid, $event)" />
                   </label>
@@ -264,7 +266,7 @@
           <div class="space-y-3">
             <div v-for="r in records" :key="r.id" class="flex items-center gap-3 px-4 py-3 rounded-2xl" style="background: #F8FAFC;">
               <span class="text-xs font-medium" style="color: #1E293B;">{{ r.date_str }} {{ r.day_of_week }}</span>
-              <span class="text-xs" style="color: #94A3B8;">{{ r.period }}节</span>
+              <span class="text-xs" style="color: #94A3B8;">{{ formatPeriod(r.period) }}</span>
               <span class="text-xs font-medium flex-1" style="color: #475569;">{{ r.course_name }}</span>
               <span class="px-2 py-1 rounded-lg text-[10px] font-semibold"
                 :style="parseInt(r.attendance_rate) >= 95 ? 'background: #ECFDF5; color: #10B981;' :
@@ -303,7 +305,7 @@
                   @click="selectMobileCheckinCourse(c)"
                 >
                   <span class="font-medium" style="color: #1E293B;">{{ c.course_name }}</span>
-                  <span class="text-[9px] ml-1" style="color: #94A3B8;">{{ c.day_of_week }} {{ c.period }}节</span>
+                  <span class="text-[9px] ml-1" style="color: #94A3B8;">{{ c.day_of_week }} {{ formatPeriod(c.period) }}</span>
                 </div>
               </div>
             </div>
@@ -472,9 +474,10 @@ import {
   parseScheduleImage, batchAddSchedule, getSchedule,
   createAttendanceRecord, listAttendanceRecords, uploadLeaveSlip, uploadClassroomPhoto,
   createCheckInSession, doCheckIn as apiCheckIn, getCheckInStatus, closeCheckIn, listCheckInSessions,
-  getAssetUrl, exportAttendanceRecords,
+  getAssetUrl, exportAttendanceRecords, getWeekNumber,
 } from '../api'
 import { useAttendanceCalendar } from '../lib/useAttendanceCalendar'
+import { formatPeriod } from '../lib/periodUtils'
 
 const calStore = useAttendanceCalendar()
 
@@ -544,6 +547,20 @@ const attForm = reactive({
 const submitting = ref(false)
 const records = ref([])
 const attDate = ref('')
+const weekAutoHint = ref('')
+
+watch(attDate, async (val) => {
+  if (!val) { weekAutoHint.value = ''; return }
+  try {
+    const { data } = await getWeekNumber(val)
+    if (data.week_number) {
+      weekNumber.value = data.week_number
+      weekAutoHint.value = `已根据校历自动识别为第${data.week_number}周`
+    } else {
+      weekAutoHint.value = ''
+    }
+  } catch { weekAutoHint.value = '' }
+})
 
 // 把课表里的 date_str（如 "3.2"）转换为 date 输入框可用的 YYYY-MM-DD
 function isoFromDateStr(s) {
@@ -767,11 +784,11 @@ async function loadRecords() {
 async function exportRecords() {
   try {
     const res = await exportAttendanceRecords(selectedClass.value, weekNumber.value)
-    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `考勤记录_${selectedClass.value || '全部'}_第${weekNumber.value}周.csv`
+    a.download = `考勤记录_${selectedClass.value || '全部'}_第${weekNumber.value}周.xlsx`
     a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
@@ -1053,6 +1070,7 @@ onMounted(async () => {
     const { data } = await getRosterClasses()
     classes.value = data.classes
   } catch {}
+  calStore.initWeekNumber()
   loadCheckInSessions()
   restoreActiveSession()
 

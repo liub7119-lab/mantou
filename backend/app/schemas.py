@@ -466,6 +466,16 @@ class LeaveSlipItem(BaseModel):
     image_path: str = Field(..., description="假条图片路径")
 
 
+class LeaveSlipOut(BaseModel):
+    id: int
+    student_id: str
+    student_name: str
+    reason: str
+    image_path: str
+
+    model_config = {"from_attributes": True}
+
+
 class AttendanceRecordOut(BaseModel):
     id: int
     schedule_id: Optional[int]
@@ -495,6 +505,7 @@ class AttendanceRecordOut(BaseModel):
     checker: str
     week_number: int
     created_at: datetime
+    leave_slips: List[LeaveSlipOut] = Field(default=[], description="请假条图片列表")
 
     model_config = {"from_attributes": True}
 

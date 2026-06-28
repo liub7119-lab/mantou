@@ -104,7 +104,8 @@
                 <th class="px-3 py-3 text-left font-medium" style="color: #059669;">节次</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">旷课</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">迟到</th>
-                <th class="px-3 py-3 text-center rounded-r-xl font-medium" style="color: #059669;">到课率</th>
+                <th class="px-3 py-3 text-center font-medium" style="color: #059669;">到课率</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">请假截图</th>
               </tr>
             </thead>
             <tbody>
@@ -114,7 +115,7 @@
                 <td class="px-3 py-3" style="color: #8B5CF6;">第{{ r.week_number }}周</td>
                 <td class="px-3 py-3" style="color: #475569;">{{ r.class_name }}</td>
                 <td class="px-3 py-3" style="color: #475569;">{{ r.course_name }}</td>
-                <td class="px-3 py-3" style="color: #94A3B8;">{{ r.period }}节</td>
+                <td class="px-3 py-3" style="color: #94A3B8;">{{ formatPeriod(r.period) }}</td>
                 <td class="px-3 py-3 text-center" :style="r.absent_count > 0 ? 'color: #EF4444;' : 'color: #94A3B8;'">{{ r.absent_count }}</td>
                 <td class="px-3 py-3 text-center" :style="r.late_count > 0 ? 'color: #EC4899;' : 'color: #94A3B8;'">{{ r.late_count }}</td>
                 <td class="px-3 py-3 text-center">
@@ -123,6 +124,14 @@
                              parseInt(r.attendance_rate) >= 90 ? 'background: #FFFBEB; color: #F59E0B;' :
                              'background: #FEF2F2; color: #EF4444;'"
                   >{{ r.attendance_rate }}</span>
+                </td>
+                <td class="px-3 py-3">
+                  <div v-if="r.leave_slips?.length" class="flex gap-1 flex-wrap">
+                    <a v-for="slip in r.leave_slips" :key="slip.id" :href="getAssetUrl(slip.image_path)" target="_blank" :title="`${slip.student_name} - ${slip.reason}`">
+                      <img :src="getAssetUrl(slip.image_path)" class="w-10 h-10 rounded-lg object-cover border" style="border-color: #E2E8F0;" />
+                    </a>
+                  </div>
+                  <span v-else style="color: #CBD5E1;">—</span>
                 </td>
               </tr>
             </tbody>
@@ -181,7 +190,8 @@
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">早退</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">旷课</th>
                 <th class="px-3 py-3 text-center font-medium" style="color: #059669;">到课率</th>
-                <th class="px-3 py-3 text-left rounded-r-xl font-medium" style="color: #059669;">情况说明</th>
+                <th class="px-3 py-3 text-left font-medium" style="color: #059669;">情况说明</th>
+                <th class="px-3 py-3 text-left rounded-r-xl font-medium" style="color: #059669;">请假截图</th>
               </tr>
             </thead>
             <tbody>
@@ -191,7 +201,7 @@
                 <td class="px-3 py-3" style="color: #475569;">{{ r.day_of_week }}</td>
                 <td class="px-3 py-3" style="color: #475569;">{{ r.class_name }}</td>
                 <td class="px-3 py-3" style="color: #475569;">{{ r.course_name }}</td>
-                <td class="px-3 py-3" style="color: #94A3B8;">{{ r.period }}节</td>
+                <td class="px-3 py-3" style="color: #94A3B8;">{{ formatPeriod(r.period) }}</td>
                 <td class="px-3 py-3 text-center" style="color: #1E293B;">{{ r.class_size }}</td>
                 <td class="px-3 py-3 text-center font-medium" style="color: #10B981;">{{ r.actual_count }}</td>
                 <td class="px-3 py-3 text-center" style="color: #3B82F6;">{{ r.sick_leave_count }}</td>
@@ -207,6 +217,14 @@
                   >{{ r.attendance_rate }}</span>
                 </td>
                 <td class="px-3 py-3 max-w-48 truncate" style="color: #94A3B8;" :title="r.leave_details">{{ r.leave_details || '—' }}</td>
+                <td class="px-3 py-3">
+                  <div v-if="r.leave_slips?.length" class="flex gap-1 flex-wrap">
+                    <a v-for="slip in r.leave_slips" :key="slip.id" :href="getAssetUrl(slip.image_path)" target="_blank" :title="`${slip.student_name} - ${slip.reason}`">
+                      <img :src="getAssetUrl(slip.image_path)" class="w-10 h-10 rounded-lg object-cover border" style="border-color: #E2E8F0;" />
+                    </a>
+                  </div>
+                  <span v-else style="color: #CBD5E1;">—</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -392,7 +410,9 @@ import {
   getRosterClasses, listAttendanceRecords, getAttendanceStats,
   listMonitors, listAllStudents, setMonitor, exportAttendanceRecords,
   getRoster, addRosterStudent, updateRosterStudent, deleteRosterStudent, importRoster,
+  getAssetUrl,
 } from '../api'
+import { formatPeriod } from '../lib/periodUtils'
 
 Chart.register(...registerables)
 
@@ -529,11 +549,11 @@ function renderPieChart({ totalSick, totalPersonal, totalLate, totalEarly, total
 async function exportRecords() {
   try {
     const res = await exportAttendanceRecords(filterClass.value, filterWeek.value)
-    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `考勤记录_${filterClass.value || '全部'}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `考勤记录_${filterClass.value || '全部'}_${new Date().toISOString().slice(0, 10)}.xlsx`
     a.style.display = 'none'
     document.body.appendChild(a)
     a.click()

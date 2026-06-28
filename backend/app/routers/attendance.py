@@ -36,9 +36,19 @@ from ..schemas import (
     CourseScheduleOut,
     MessageResponse,
 )
+from ..services.attendance_export_service import export_attendance_excel
 from ..services.auth_service import get_current_user
+from ..services.calendar_service import get_calendar_info, get_week_number
+from ..services.period_utils import normalize_period
 
 router = APIRouter()
+
+
+def _record_with_slips(record: AttendanceRecord, db: Session) -> AttendanceRecordOut:
+    slips = db.query(LeaveSlip).filter(LeaveSlip.attendance_record_id == record.id).all()
+    out = AttendanceRecordOut.model_validate(record)
+    out.leave_slips = slips
+    return out
 
 
 def require_monitor_or_counselor(current_user: User = Depends(get_current_user)) -> User:
@@ -252,7 +262,7 @@ async def add_schedule(
         class_name=data.class_name,
         week_number=data.week_number,
         day_of_week=data.day_of_week,
-        period=data.period,
+        period=normalize_period(data.period),
         course_name=data.course_name,
         teacher=data.teacher,
         classroom=data.classroom,
@@ -461,7 +471,7 @@ async def create_attendance(
         class_name=data.class_name,
         date_str=data.date_str,
         day_of_week=data.day_of_week,
-        period=data.period,
+        period=normalize_period(data.period),
         course_name=data.course_name,
         teacher=data.teacher,
         classroom=data.classroom,
@@ -497,7 +507,25 @@ async def create_attendance(
             db.add(leave_slip)
         db.commit()
 
-    return record
+    return _record_with_slips(record, db)
+
+
+@router.get("/calendar", summary="获取校历信息")
+async def calendar_info(
+    current_user: User = Depends(require_monitor_or_counselor),
+):
+    return get_calendar_info()
+
+
+@router.get("/week-number", summary="根据日期智能识别教学周数")
+async def week_number_from_date(
+    date: str = Query(..., description="日期，支持 YYYY-MM-DD 或 M.D"),
+    current_user: User = Depends(require_monitor_or_counselor),
+):
+    week = get_week_number(date)
+    if week is None:
+        return {"week_number": None, "message": "日期不在本学期范围内"}
+    return {"week_number": week}
 
 
 @router.get("/records", response_model=list[AttendanceRecordOut], summary="查询考勤记录列表")
@@ -512,7 +540,8 @@ async def list_records(
         q = q.filter(AttendanceRecord.class_name == class_name)
     if week_number > 0:
         q = q.filter(AttendanceRecord.week_number == week_number)
-    return q.order_by(AttendanceRecord.created_at.desc()).all()
+    records = q.order_by(AttendanceRecord.created_at.desc()).all()
+    return [_record_with_slips(r, db) for r in records]
 
 
 @router.get("/records/stats", summary="考勤统计")
@@ -544,7 +573,7 @@ async def attendance_stats(
     }
 
 
-@router.get("/records/export", summary="导出考勤表（CSV，吉利学院格式）")
+@router.get("/records/export", summary="导出考勤表（Excel，吉利学院格式，含请假条图片）")
 async def export_records(
     class_name: str = Query("", description="班级筛选"),
     week_number: int = Query(0, description="周数筛选"),
@@ -558,52 +587,18 @@ async def export_records(
         q = q.filter(AttendanceRecord.week_number == week_number)
     records = q.order_by(AttendanceRecord.created_at).all()
 
-    output = io.StringIO()
-    output.write("﻿")
-    writer = csv.writer(output)
+    record_ids = [r.id for r in records]
+    all_slips = db.query(LeaveSlip).filter(LeaveSlip.attendance_record_id.in_(record_ids)).all() if record_ids else []
+    leave_slips_map: dict[int, list[LeaveSlip]] = {}
+    for slip in all_slips:
+        leave_slips_map.setdefault(slip.attendance_record_id, []).append(slip)
 
-    writer.writerow(["吉利学院学风督查记录表（二级学院、辅导员用表）"] + [""] * 18)
-    writer.writerow([f"检查人员：{current_user.name}"] + [""] * 18)
-
-    writer.writerow([
-        "序号", "学院", "年级专业班级", "时间", "周数", "节次", "教室",
-        "课程名称", "授课教师", "辅导员",
-        "班级人数", "实到人数", "病公假人数", "事假人数", "迟到人数", "早退人数", "旷课人数", "未到人数",
-        "平均到课率", "平均到课率（含病公假）",
-        "请假、违纪情况说明",
-    ])
-
-    for i, r in enumerate(records, 1):
-        writer.writerow([
-            i,
-            "",
-            r.class_name,
-            r.date_str,
-            f"第{r.week_number}周" if r.week_number else "",
-            r.period,
-            r.classroom,
-            r.course_name,
-            r.teacher,
-            r.checker,
-            r.class_size,
-            r.actual_count,
-            r.sick_leave_count,
-            r.personal_leave_count,
-            r.late_count,
-            r.early_leave_count,
-            r.absent_count,
-            r.not_arrived_count,
-            r.attendance_rate,
-            r.attendance_rate_with_leave,
-            r.leave_details or "",
-        ])
-
-    output.seek(0)
-    filename = f"考勤记录_{class_name or '全部'}_{datetime.now().strftime('%Y%m%d')}.csv"
+    buf = export_attendance_excel(records, leave_slips_map, current_user.name, db)
+    filename = f"考勤记录_{class_name or '全部'}_{datetime.now().strftime('%Y%m%d')}.xlsx"
     encoded_filename = quote(filename)
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv; charset=utf-8",
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
     )
 

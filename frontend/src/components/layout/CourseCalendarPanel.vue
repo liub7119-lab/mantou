@@ -39,7 +39,7 @@
               <div v-for="c in day.courses" :key="c.id" class="px-3 py-2 rounded-xl text-[11px]" style="background: #F8FAFC;">
                 <div class="flex items-center justify-between">
                   <span class="font-medium" style="color: #1E293B;">{{ c.course_name }}</span>
-                  <span class="text-[9px]" style="color: #CBD5E1;">{{ c.period }}节</span>
+                  <span class="text-[9px]" style="color: #CBD5E1;">{{ formatPeriod(c.period) }}</span>
                 </div>
                 <div class="flex items-center gap-2 mt-0.5">
                   <span v-if="c.date_str" class="text-[9px] px-1.5 py-0.5 rounded" style="background: #ECFDF5; color: #10B981;">{{ c.date_str }}</span>
@@ -186,7 +186,7 @@
                   <div class="flex items-center justify-between">
                     <span class="font-medium" style="color: #1E293B;">{{ c.course_name }}</span>
                     <div class="flex items-center gap-0.5">
-                      <span class="text-[9px] mr-1" style="color: #CBD5E1;">{{ c.period }}节</span>
+                      <span class="text-[9px] mr-1" style="color: #CBD5E1;">{{ formatPeriod(c.period) }}</span>
                       <button @click="startEdit(c, $event)" class="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" style="background: #EFF6FF;">
                         <Pencil class="w-2.5 h-2.5" style="color: #3B82F6;" />
                       </button>
@@ -238,7 +238,7 @@
                 @click="$emit('selectCheckinCourse', c)"
               >
                 <span class="font-medium" style="color: #1E293B;">{{ c.course_name }}</span>
-                <span class="text-[9px] ml-1" style="color: #CBD5E1;">{{ c.period }}节</span>
+                <span class="text-[9px] ml-1" style="color: #CBD5E1;">{{ formatPeriod(c.period) }}</span>
               </div>
             </div>
           </div>
@@ -267,6 +267,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { BookOpen, Camera, Plus, X, Loader2, Pencil, Trash2, Check, RefreshCw } from 'lucide-vue-next'
 import { useAttendanceCalendar } from '@/lib/useAttendanceCalendar'
+import { formatPeriod } from '@/lib/periodUtils'
 import { updateSchedule, deleteSchedule, getRosterClasses, getSchedule } from '@/api'
 
 const route = useRoute()
