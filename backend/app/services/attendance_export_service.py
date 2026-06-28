@@ -2,9 +2,7 @@
 考勤记录 Excel 导出服务（吉利学院学风督查记录表格式，含请假条图片）
 """
 
-from __future__ import annotations
-
-import re
+from typing import Optional
 from io import BytesIO
 from pathlib import Path
 
@@ -30,7 +28,8 @@ HEADERS = [
     "课程名称", "授课教师", "辅导员",
     "班级人数", "实到人数", "病公假人数", "事假人数", "迟到人数", "早退人数", "旷课人数", "未到人数",
     "平均到课率", "平均到课率（含病公假）",
-    "请假、违纪情况说明", "学生请假截图1", "学生请假截图2", "学生请假截图3", "学生请假截图4",
+    "请假、违纪情况说明",
+    "学生请假截图（吉利相伴截图）", "学生请假截图2", "学生请假截图3", "学生请假截图4",
 ]
 
 COL_WIDTHS = [6, 18, 22, 8, 8, 8, 10, 18, 10, 10, 8, 8, 10, 8, 8, 8, 8, 8, 10, 16, 30, 16, 16, 16, 16]
@@ -44,20 +43,31 @@ def _format_export_date(date_str: str) -> str:
 
 
 def _get_college(db: Session, class_name: str) -> str:
-    roster = db.query(ClassRoster).filter(ClassRoster.class_name == class_name).first()
-    if roster and roster.major:
-        return roster.major
+    if class_name:
+        roster = db.query(ClassRoster).filter(ClassRoster.class_name == class_name).first()
+        if roster and roster.major:
+            return roster.major
     return DEFAULT_COLLEGE
 
 
-def _embed_image(ws, image_path: str, cell_ref: str, row_idx: int):
+def _resolve_upload_path(image_path: str) -> Optional[Path]:
     if not image_path:
-        return
-    rel = image_path.lstrip("/")
-    if rel.startswith("uploads/"):
-        rel = rel[len("uploads/"):]
+        return None
+    rel = image_path.lstrip("/").replace("uploads/", "", 1)
     abs_path = Path(settings.UPLOAD_DIR) / rel
-    if not abs_path.exists():
+    if abs_path.exists():
+        return abs_path
+    # 兼容历史路径写法
+    alt = Path(settings.UPLOAD_DIR) / Path(image_path).name
+    if alt.exists():
+        return alt
+    return None
+
+
+def _embed_image(ws, image_path: str, cell_ref: str, row_idx: int):
+    abs_path = _resolve_upload_path(image_path)
+    if abs_path is None:
+        ws[cell_ref].value = "（图片文件不存在）"
         return
     try:
         pil_img = PILImage.open(abs_path)
@@ -69,9 +79,8 @@ def _embed_image(ws, image_path: str, cell_ref: str, row_idx: int):
         img = XlImage(buf)
         img.width = IMG_WIDTH_PX
         img.height = IMG_HEIGHT_PX
-        img.anchor = cell_ref
-        ws.add_image(img, cell_ref)
         ws.row_dimensions[row_idx].height = max(ws.row_dimensions[row_idx].height or 0, IMG_ROW_HEIGHT)
+        ws.add_image(img, cell_ref)
     except Exception:
         ws[cell_ref].value = "（图片加载失败）"
 
